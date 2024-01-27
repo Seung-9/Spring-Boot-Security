@@ -1,11 +1,14 @@
 package com.cos.security.config;
 
+import com.cos.security.config.oauth.PrincipalOauth2UserService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfiguration;
 import org.springframework.security.config.annotation.web.configurers.HttpBasicConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -21,6 +24,9 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    @Autowired
+    private PrincipalOauth2UserService principalOauth2UserService;
+
     @Bean
     protected SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf().disable();
@@ -29,9 +35,15 @@ public class SecurityConfig {
                 .requestMatchers("/manager/**").access("hasRole('ROLE_ADMIN') or hasRole('ROLE_MANAGER')")
                 .requestMatchers("/admin/**").access("hasRole('ROLE_ADMIN')")
                 .anyRequest().permitAll()
-                .and().formLogin().loginPage("/loginForm")
+                .and()
+                .formLogin().loginPage("/loginForm")
                 .loginProcessingUrl("/login") // 시큐리티가 /login 을 낚아채서 로그인을 진행 시킴
-                .defaultSuccessUrl("/");
+                .defaultSuccessUrl("/")
+                .and()
+                .oauth2Login().loginPage("/loginForm")
+                // 이제 구글 로그인이 완료 된 후의 후처리를 해야됨 ( 코드를 받는 게 아니라, 엑세스 토큰 + 사용자 프로필 정보를 받아오는 것 )
+                .userInfoEndpoint()
+                .userService(principalOauth2UserService);
 
         return http.build();
     }
